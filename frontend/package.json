@@ -1,0 +1,20 @@
+{
+  "name": "workspace-hub",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "format": "prettier --write src vite.config.js package.json index.html",
+    "format:check": "prettier --check src vite.config.js package.json index.html"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.21"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10"
+  }
+}
