@@ -1,3 +1,6 @@
+import TextEditor from './TextEditor.jsx';
+import Organizer from './Organizer.jsx';
+import FileAttributes from './FileAttributes.jsx';
 import Editor from './Editor.jsx';
 import Player from './Player.jsx';
 // Добавьте компонент и запись сюда: оболочка построит меню и карточку автоматически.
@@ -26,7 +29,8 @@ export const modules = [
     category: 'РАБОТА С ТЕКСТОМ',
     description: 'Место для мыслей, заметок и больших историй.',
     icon: 'T',
-    available: false,
+    component: TextEditor,
+    available: true,
   },
   {
     id: 'organizer',
@@ -34,7 +38,8 @@ export const modules = [
     category: 'ПЛАНИРОВАНИЕ',
     description: 'Задачи и планы, собранные в одном пространстве.',
     icon: '▦',
-    available: false,
+    component: Organizer,
+    available: true,
   },
   {
     id: 'files',
@@ -42,6 +47,7 @@ export const modules = [
     category: 'ФАЙЛОВЫЕ ИНСТРУМЕНТЫ',
     description: 'Свойства и атрибуты ваших рабочих файлов.',
     icon: '▤',
-    available: false,
+    component: FileAttributes,
+    available: true,
   },
 ];

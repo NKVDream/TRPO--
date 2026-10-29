@@ -1,21 +1,25 @@
 import { listProjects, getProject, saveProject } from '../api/client';
 import React, { useRef, useState, useEffect } from 'react';
 export default function Editor() {
-  const canvas = useRef(),
-    origin = useRef(),
-    drawing = useRef(false),
-    history = useRef([]),
-    cursor = useRef(-1),
-    file = useRef();
-  const [tool, setTool] = useState('brush'),
-    [color, setColor] = useState('#1674d1'),
-    [size, setSize] = useState(5),
-    [name, setName] = useState('Без названия'),
-    [message, setMessage] = useState(''),
-    [projects, setProjects] = useState([]),
-    [revision, setRevision] = useState(0),
-    [busy, setBusy] = useState(false);
-  const snapshot = () => {
+  const canvas = useRef(null);
+  const origin = useRef(null);
+  const drawing = useRef(false);
+  const history = useRef([]);
+  const cursor = useRef(-1);
+  const file = useRef(null);
+
+  const [tool, setTool] = useState('brush');
+  const [color, setColor] = useState('#1674d1');
+  const [size, setSize] = useState(5);
+  const [name, setName] = useState('Без названия');
+  const [message, setMessage] = useState('');
+  const [projects, setProjects] = useState([]);
+  // История хранится в ref; счётчик обновляет доступность кнопок отмены.
+  const [, setRevision] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  // Новое действие после отмены удаляет предыдущую ветку истории.
+  const saveHistorySnapshot = () => {
     history.current = history.current.slice(0, cursor.current + 1);
     history.current.push(canvas.current.toDataURL());
     if (history.current.length > 25) history.current.shift();
@@ -26,22 +30,23 @@ export default function Editor() {
     const c = canvas.current;
     c.getContext('2d').fillStyle = 'white';
     c.getContext('2d').fillRect(0, 0, c.width, c.height);
-    snapshot();
+    saveHistorySnapshot();
   }, []);
-  const point = (e) => {
+  // CSS меняет видимый размер canvas, а рисунок всегда имеет размер 1200 × 720.
+  const getCanvasPoint = (e) => {
     const r = canvas.current.getBoundingClientRect();
     return {
       x: ((e.clientX - r.left) * canvas.current.width) / r.width,
       y: ((e.clientY - r.top) * canvas.current.height) / r.height,
     };
   };
-  const down = (e) => {
+  const startDrawing = (e) => {
     if (e.button !== 0) return;
     const c = canvas.current,
       ctx = c.getContext('2d');
     drawing.current = true;
     c.setPointerCapture(e.pointerId);
-    origin.current = { ...point(e), image: ctx.getImageData(0, 0, c.width, c.height) };
+    origin.current = { ...getCanvasPoint(e), image: ctx.getImageData(0, 0, c.width, c.height) };
     ctx.beginPath();
     ctx.moveTo(origin.current.x, origin.current.y);
     if (tool === 'brush' || tool === 'eraser') {
@@ -53,9 +58,9 @@ export default function Editor() {
       ctx.moveTo(origin.current.x, origin.current.y);
     }
   };
-  const move = (e) => {
+  const continueDrawing = (e) => {
     if (!drawing.current) return;
-    const p = point(e),
+    const p = getCanvasPoint(e),
       ctx = canvas.current.getContext('2d'),
       o = origin.current;
     ctx.strokeStyle = tool === 'eraser' ? 'white' : color;
@@ -86,10 +91,10 @@ export default function Editor() {
       ctx.stroke();
     }
   };
-  const end = () => {
+  const finishDrawing = () => {
     if (drawing.current) {
       drawing.current = false;
-      snapshot();
+      saveHistorySnapshot();
     }
   };
   const loadImage = (src) =>
@@ -113,7 +118,7 @@ export default function Editor() {
       img.onerror = reject;
       img.src = src;
     });
-  const undo = async (delta) => {
+  const restoreHistory = async (delta) => {
     const next = cursor.current + delta;
     if (next < 0 || next >= history.current.length) return;
     await loadImage(history.current[next]);
@@ -126,7 +131,7 @@ export default function Editor() {
     const url = URL.createObjectURL(f);
     try {
       await loadImage(url);
-      snapshot();
+      saveHistorySnapshot();
       setName(f.name.replace(/\.[^.]+$/, ''));
     } catch {
       setMessage('Не удалось открыть изображение');
@@ -135,7 +140,7 @@ export default function Editor() {
       e.target.value = '';
     }
   };
-  const save = async () => {
+  const persistProject = async () => {
     setBusy(true);
     try {
       await saveProject(crypto.randomUUID(), { name, content: canvas.current.toDataURL() });
@@ -146,7 +151,7 @@ export default function Editor() {
       setBusy(false);
     }
   };
-  const list = async () => {
+  const refreshProjects = async () => {
     try {
       const p = await listProjects();
       setProjects(p);
@@ -155,11 +160,11 @@ export default function Editor() {
       setMessage('Для библиотеки запустите C# сервер');
     }
   };
-  const open = async (id) => {
+  const openProject = async (id) => {
     try {
       const p = await getProject(id);
       await loadImage(p.content);
-      snapshot();
+      saveHistorySnapshot();
       setName(p.name);
       setProjects([]);
       setMessage('Проект открыт');
@@ -175,7 +180,7 @@ export default function Editor() {
           <h1>Графический редактор</h1>
           <p>От первой идеи до готового изображения.</p>
         </div>
-        <button className="primary" disabled={busy} onClick={save}>
+        <button className="primary" disabled={busy} onClick={persistProject}>
           {busy ? 'Сохранение…' : 'Сохранить проект ↗'}
         </button>
       </div>
@@ -187,7 +192,7 @@ export default function Editor() {
         />
         <span>1200 × 720 px</span>
         <button onClick={() => file.current.click()}>Открыть изображение</button>
-        <button onClick={list}>Мои проекты</button>
+        <button onClick={refreshProjects}>Мои проекты</button>
         <button
           onClick={() => {
             const a = document.createElement('a');
@@ -247,10 +252,13 @@ export default function Editor() {
             />
           </label>
           <hr />
-          <button disabled={cursor.current <= 0} onClick={() => undo(-1)}>
+          <button disabled={cursor.current <= 0} onClick={() => restoreHistory(-1)}>
             ↶ Отменить
           </button>
-          <button disabled={cursor.current >= history.current.length - 1} onClick={() => undo(1)}>
+          <button
+            disabled={cursor.current >= history.current.length - 1}
+            onClick={() => restoreHistory(1)}
+          >
             ↷ Повторить
           </button>
           <button
@@ -260,7 +268,7 @@ export default function Editor() {
                   ctx = c.getContext('2d');
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 0, c.width, c.height);
-                snapshot();
+                saveHistorySnapshot();
               }
             }}
           >
@@ -272,10 +280,10 @@ export default function Editor() {
             ref={canvas}
             width="1200"
             height="720"
-            onPointerDown={down}
-            onPointerMove={move}
-            onPointerUp={end}
-            onPointerCancel={end}
+            onPointerDown={startDrawing}
+            onPointerMove={continueDrawing}
+            onPointerUp={finishDrawing}
+            onPointerCancel={finishDrawing}
           />
           <div className="canvas-caption">
             <span>Холст · {tool === 'eraser' ? 'ластик' : 'рисование'}</span>
@@ -289,7 +297,7 @@ export default function Editor() {
       {projects.length > 0 && (
         <div className="project-list">
           {projects.map((p) => (
-            <button key={p.id} onClick={() => open(p.id)}>
+            <button key={p.id} onClick={() => openProject(p.id)}>
               {p.name} ↗
             </button>
           ))}

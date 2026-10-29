@@ -1,27 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
-const format = (n) =>
+const formatTime = (n) =>
   Number.isFinite(n)
     ? `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`
     : '0:00';
 export default function Player() {
-  const [tracks, setTracks] = useState([]),
-    [index, setIndex] = useState(-1),
-    [playing, setPlaying] = useState(false),
-    [time, setTime] = useState(0),
-    [duration, setDuration] = useState(0),
-    [volume, setVolume] = useState(0.7),
-    [repeat, setRepeat] = useState(false),
-    [shuffle, setShuffle] = useState(false),
-    [error, setError] = useState('');
-  const audio = useRef(),
-    input = useRef(),
-    urls = useRef([]),
-    autoplay = useRef(false);
+  const [tracks, setTracks] = useState([]);
+  const [index, setIndex] = useState(-1);
+  const [playing, setPlaying] = useState(false);
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(0.7);
+  const [repeat, setRepeat] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
+  const [error, setError] = useState('');
+
+  const audio = useRef(null);
+  const input = useRef(null);
+  const urls = useRef([]);
+  const autoplay = useRef(false);
+
   useEffect(() => () => urls.current.forEach(URL.revokeObjectURL), []);
   useEffect(() => {
     audio.current.volume = volume;
   }, [volume]);
-  const add = (files) => {
+  // Object URL даёт audio доступ к локальному File без отправки на сервер.
+  const addTracks = (files) => {
     const added = Array.from(files)
       .filter((f) => f.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(f.name))
       .map((f) => {
@@ -38,16 +41,17 @@ export default function Player() {
     if (index === -1 && added.length) setIndex(0);
     setError(added.length ? '' : 'Выберите аудиофайлы MP3, WAV, OGG или FLAC');
   };
-  const play = () =>
+  const playCurrentTrack = () =>
     audio.current
       .play()
       .catch(() =>
         setError('Не удалось воспроизвести файл. Проверьте поддержку формата браузером.'),
       );
-  const select = (i) => {
+  // Для нового src ждём loadedmetadata, прежде чем включать воспроизведение.
+  const selectTrack = (i) => {
     setError('');
     if (i === index) {
-      play();
+      playCurrentTrack();
       return;
     }
     autoplay.current = true;
@@ -55,17 +59,17 @@ export default function Player() {
     setDuration(0);
     setIndex(i);
   };
-  const next = () => {
+  const playNextTrack = () => {
     if (!tracks.length) return;
     let n =
       shuffle && tracks.length > 1
         ? (index + 1 + Math.floor(Math.random() * (tracks.length - 1))) % tracks.length
         : (index + 1) % tracks.length;
-    select(n);
+    selectTrack(n);
   };
-  const remove = (i) => {
+  const removeTrack = (i) => {
     const removed = tracks[i];
-    audio.current.pause();
+    if (i === index) audio.current.pause();
     setTracks((t) => t.filter((_, j) => j !== i));
     URL.revokeObjectURL(removed.url);
     if (i === index) {
@@ -92,7 +96,7 @@ export default function Player() {
           type="file"
           accept="audio/*,.flac,.m4a"
           onChange={(e) => {
-            add(e.target.files);
+            addTracks(e.target.files);
             e.target.value = '';
           }}
         />
@@ -122,8 +126,8 @@ export default function Player() {
               }}
             />
             <div>
-              <span>{format(time)}</span>
-              <span>{format(duration)}</span>
+              <span>{formatTime(time)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
           </div>
           <div className="play-controls">
@@ -138,7 +142,7 @@ export default function Player() {
             <button
               aria-label="Предыдущий трек"
               disabled={!tracks.length}
-              onClick={() => select((index - 1 + tracks.length) % tracks.length)}
+              onClick={() => selectTrack((index - 1 + tracks.length) % tracks.length)}
             >
               ❮
             </button>
@@ -146,11 +150,11 @@ export default function Player() {
               className="play-button"
               aria-label={playing ? 'Пауза' : 'Воспроизвести'}
               disabled={index < 0}
-              onClick={() => (playing ? audio.current.pause() : play())}
+              onClick={() => (playing ? audio.current.pause() : playCurrentTrack())}
             >
               {playing ? 'Ⅱ' : '▶'}
             </button>
-            <button aria-label="Следующий трек" disabled={!tracks.length} onClick={next}>
+            <button aria-label="Следующий трек" disabled={!tracks.length} onClick={playNextTrack}>
               ❯
             </button>
             <button
@@ -181,7 +185,7 @@ export default function Player() {
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
-            add(e.dataTransfer.files);
+            addTracks(e.dataTransfer.files);
           }}
         >
           <div className="playlist-heading">
@@ -194,7 +198,7 @@ export default function Player() {
           {tracks.length ? (
             tracks.map((t, i) => (
               <div className={'track ' + (i === index ? 'current' : '')} key={t.id}>
-                <button className="track-name" onClick={() => select(i)}>
+                <button className="track-name" onClick={() => selectTrack(i)}>
                   <span>{i === index && playing ? '♫' : String(i + 1).padStart(2, '0')}</span>
                   <div>
                     <strong>{t.title}</strong>
@@ -202,7 +206,7 @@ export default function Player() {
                   </div>
                   <span>▷</span>
                 </button>
-                <button aria-label={'Удалить ' + t.title} onClick={() => remove(i)}>
+                <button aria-label={'Удалить ' + t.title} onClick={() => removeTrack(i)}>
                   ×
                 </button>
               </div>
@@ -238,7 +242,7 @@ export default function Player() {
           setDuration(audio.current.duration);
           if (autoplay.current) {
             autoplay.current = false;
-            play();
+            playCurrentTrack();
           }
         }}
         onTimeUpdate={() => setTime(audio.current.currentTime)}
@@ -246,7 +250,7 @@ export default function Player() {
         onPause={() => setPlaying(false)}
         onEnded={() => {
           setPlaying(false);
-          if (!repeat) next();
+          if (!repeat) playNextTrack();
         }}
         onError={() => setError('Этот аудиофайл не поддерживается браузером.')}
       />

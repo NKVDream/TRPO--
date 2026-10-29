@@ -4,7 +4,7 @@
 
 ```text
 Браузер: React
-  App → Sidebar / HomePage / Editor / Player
+  App → Sidebar / HomePage / Editor / Player / TextEditor / Organizer / FileAttributes
                       │
                api/client.js (fetch)
                       │ HTTP /api/projects
@@ -69,3 +69,11 @@ dotnet format backend/Hub.csproj --no-restore
 ```
 
 Prettier форматирует JSX, JS, CSS и конфигурацию фронтенда. dotnet format — C#. После изменения исходников пересоберите приложение, прежде чем проверять единый запуск.
+
+## Остальные модули
+
+Тексты проходят через DocumentsController и DocumentRepository в таблицу documents. Задачи — через TasksController и TaskRepository в таблицу tasks. Проверки длины и обязательности полей задаются в DTO; формат даты проверяет контроллер задач. Для этого простого CRUD отдельный сервис не добавлен.
+
+Файлы проходят через FilesController и WorkspaceFileService в data/files/{uuid}/{name}. Сервис не принимает произвольные пути; меняет свойства загруженных копий. SQLite для этих копий не используется. Плеер по-прежнему работает локально в браузере.
+
+Все пять модулей доступны. Подробные разборы состояния, обработчиков, маршрутов и ограничений: [каталог модулей](modules/README.md).

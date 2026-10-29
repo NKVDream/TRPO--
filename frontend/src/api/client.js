@@ -1,12 +1,14 @@
-// Все обращения к C# API собраны здесь. При разработке /api проксирует Vite.
-async function request(path, options) {
+// Общий HTTP-клиент C# API. При разработке /api проксирует Vite.
+export async function request(path, options) {
   const response = await fetch(`/api${path}`, options);
 
   if (!response.ok) {
-    throw new Error(`Ошибка API: ${response.status}`);
+    const error = await response.json().catch(() => null);
+    const validation = error?.errors ? Object.values(error.errors).flat().join(' ') : null;
+    throw new Error(error?.error || validation || `Ошибка API: ${response.status}`);
   }
 
-  return response.json();
+  return response.status === 204 ? null : response.json();
 }
 
 export function getHealth() {

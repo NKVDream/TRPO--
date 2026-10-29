@@ -38,6 +38,20 @@ public sealed class HubDatabase
                 content TEXT NOT NULL,
                 updated TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS documents (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                content TEXT NOT NULL,
+                updated TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                notes TEXT NOT NULL,
+                due_date TEXT,
+                priority TEXT NOT NULL,
+                completed INTEGER NOT NULL DEFAULT 0
+            );
             """;
         command.ExecuteNonQuery();
     }

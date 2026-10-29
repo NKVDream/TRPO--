@@ -9,6 +9,9 @@ builder.Services.AddControllers();
 builder.Services.AddSingleton<HubDatabase>();
 builder.Services.AddScoped<ProjectRepository>();
 builder.Services.AddScoped<ProjectService>();
+builder.Services.AddScoped<DocumentRepository>();
+builder.Services.AddScoped<TaskRepository>();
+builder.Services.AddSingleton<WorkspaceFileService>();
 
 var app = builder.Build();
 app.Services.GetRequiredService<HubDatabase>().Initialize();

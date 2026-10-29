@@ -1,6 +1,7 @@
 import React from 'react';
 import { modules } from '../modules/registry';
 export default function HomePage() {
+  const availableCount = modules.filter((module) => module.available).length;
   return (
     <>
       <section className="hero">
@@ -43,7 +44,8 @@ export default function HomePage() {
           <h2>Инструменты для ваших идей</h2>
         </div>
         <span>
-          02 доступны <b>/</b> 05 модулей
+          {String(availableCount).padStart(2, '0')} доступны <b>/</b>{' '}
+          {String(modules.length).padStart(2, '0')} модулей
         </span>
       </div>
       <div className="module-cards">
